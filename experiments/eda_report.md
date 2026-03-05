@@ -29,3 +29,11 @@
 
 **Decision to make:**
 - We may need to consider techniques to handle the imbalance in the dataset, such as class weighting in the loss function, tuning the decision threshold and PR-AUC as an evaluation metric.
+
+
+### Co-occurrence between labels
+#### High co-occurrence
+- toxic and obscene
+- toxic and insult
+- obscene and insult
+- toxic and severe_toxic (every severe toxic comment is also toxic)
