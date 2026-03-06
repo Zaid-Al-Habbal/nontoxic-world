@@ -37,3 +37,32 @@
 - toxic and insult
 - obscene and insult
 - toxic and severe_toxic (every severe toxic comment is also toxic)
+
+### Comment Length Analysis
+
+#### Character Length
+
+- count    143613.000000
+- mean        394.841992
+- std         592.786057
+- min           6.000000
+- 25%          96.000000
+- 50%         205.000000
+- 75%         436.000000
+- max        5000.000000
+
+#### Word Length
+
+count    143613.000000
+mean         67.395772
+std          99.573549
+min           1.000000
+25%          17.000000
+50%          36.000000
+75%          75.000000
+max        1411.000000
+Name: comment_word_length, dtype: float64
+
+### Vocabulary Size Estimation
+- vocab size after simple normalization: 178489
+- if we keep only the top 30k words, we will cover 97.3% of the comments in the dataset.
