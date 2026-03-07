@@ -23,3 +23,5 @@
 - We Added a special token for URLs: [URL]
 
 - preproc_train contains the preprocessed training data without tokenization
+
+- tokenized_dataset contains the tokenized training data, which is ready for model training. It includes input IDs, attention masks, and labels.
