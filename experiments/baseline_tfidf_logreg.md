@@ -20,3 +20,5 @@
 - PR-AUC for insult: 0.7610
 - PR-AUC for identity_hate: 0.4174
 - Macro PR-AUC: 0.6274
+
+- Macro F1-score: 0.54
