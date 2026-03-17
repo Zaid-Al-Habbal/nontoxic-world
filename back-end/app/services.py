@@ -101,13 +101,10 @@ def _get_device() -> torch.device:
 def _load_bert_embeddings() -> nn.Embedding:
     hf_repo = "Zaid-Al-Habbal/nontoxic-world"
     logger.info(f"Downloading checkpoint for bert_word_embeddings from {hf_repo}...")
-    embeddings = hf_hub_download(
+    checkpoint = hf_hub_download(
         repo_id=hf_repo, filename="bert_word_embeddings.pt"
     )
-    # Detach from the full BERT model to avoid carrying unnecessary weights
-    embeddings = nn.Embedding.from_pretrained(
-        embeddings.weight.data.clone(), freeze=True
-    )
+    embeddings = torch.load(checkpoint, weights_only=False)
     return embeddings
 
 
@@ -171,7 +168,7 @@ def _load_single_model(model_name: str) -> _LoadedModel:
         repo_id=hf_repo, filename=entry["threshold_file"]
     )
 
-    checkpoint = torch.load(checkpoint_path, map_location=_device)
+    checkpoint = torch.load(checkpoint_path, map_location=_device, weights_only=False)
 
     with open(threshold_path) as f:
         thresholds: dict[str, float] = json.load(f)
