@@ -34,14 +34,13 @@ def add_to_history(text: str, model_name: str, result: dict):
     entry = {
         "timestamp": datetime.now().strftime("%H:%M:%S"),
         "date": datetime.now().strftime("%b %d"),
-        "text": text[:120] + ("…" if len(text) > 120 else ""),
+        "text": text[:120] + ("..." if len(text) > 120 else ""),
         "model": model_name,
         "is_toxic": result.get("is_toxic", False),
         "probabilities": result.get("probabilities", {}),
         "predictions": result.get("predictions", {}),
         "result": result,
     }
-    # Prepend newest first, cap at 50
     st.session_state["prediction_history"].insert(0, entry)
     st.session_state["prediction_history"] = st.session_state["prediction_history"][:50]
 
@@ -58,9 +57,9 @@ LABEL_DISPLAY = {
 }
 
 MODEL_DISPLAY = {
-    "StackedBiGRUModel":                  "BiGRU · BBPE",
-    "StackedBiGRUWithPretrainedEmbedModel":"BiGRU · BERT Embed",
-    "StackedBiGRUWithScaledAttention":    "BiGRU + Attention · BERT",
+    "StackedBiGRUModel":                   "BiGRU + BBPE",
+    "StackedBiGRUWithPretrainedEmbedModel": "BiGRU + BERT Embed",
+    "StackedBiGRUWithScaledAttention":     "BiGRU + Attention",
 }
 
 MODEL_DESCRIPTIONS = {
@@ -70,6 +69,18 @@ MODEL_DESCRIPTIONS = {
         "Balanced performance. Frozen BERT word embeddings with a stacked BiGRU encoder.",
     "StackedBiGRUWithScaledAttention":
         "Best accuracy. Adds scaled dot-product self-attention on top of BERT embeddings.",
+}
+
+MODEL_TOKENIZER_LABEL = {
+    "StackedBiGRUModel":                   "BBPE tokenizer",
+    "StackedBiGRUWithPretrainedEmbedModel": "BERT tokenizer",
+    "StackedBiGRUWithScaledAttention":     "BERT tokenizer",
+}
+
+MODEL_SPEED_LABEL = {
+    "StackedBiGRUModel":                   "Fast",
+    "StackedBiGRUWithPretrainedEmbedModel": "Balanced",
+    "StackedBiGRUWithScaledAttention":     "Accurate",
 }
 
 
