@@ -3,6 +3,8 @@
 This document summarized the actions we took in the project. The project consists of several stages, 
 including EDA, data preprocessing, tokenization, prepare data for training, building models, training, and evaluation.
 
+The project is based on the dataset: [Wikipedia Toxic Comments](https://www.kaggle.com/competitions/jigsaw-toxic-comment-classification-challenge/data)
+
 - [Nontoxic World Project Summary](#nontoxic-world-project-summary)
   - [Exploratory Data Analysis (EDA)](#exploratory-data-analysis-eda)
   - [Data Preprocessing](#data-preprocessing)
@@ -27,10 +29,10 @@ including EDA, data preprocessing, tokenization, prepare data for training, buil
       - [4. Stacked GRU Model with Pretrained BERT Embeddings:](#4-stacked-gru-model-with-pretrained-bert-embeddings)
         - [Architecture:](#architecture-3)
         - [Results on the test set:](#results-on-the-test-set-3)
-      - [4. Stacked BiGRU Model with Pretrained BERT Embeddings:](#4-stacked-bigru-model-with-pretrained-bert-embeddings)
+      - [5. Stacked BiGRU Model with Pretrained BERT Embeddings:](#5-stacked-bigru-model-with-pretrained-bert-embeddings)
         - [Architecture:](#architecture-4)
         - [Results on the test set:](#results-on-the-test-set-4)
-      - [5. Stacked BiGRU + Dot-Product Attention with Pretrained BERT Embeddings (automatically fine-tuned using optuna)](#5-stacked-bigru--dot-product-attention-with-pretrained-bert-embeddings-automatically-fine-tuned-using-optuna)
+      - [6. Stacked BiGRU + Dot-Product Attention with Pretrained BERT Embeddings (automatically fine-tuned using optuna)](#6-stacked-bigru--dot-product-attention-with-pretrained-bert-embeddings-automatically-fine-tuned-using-optuna)
         - [Architecture:](#architecture-5)
         - [Results on the test set:](#results-on-the-test-set-5)
 
@@ -142,7 +144,7 @@ To address class imbalance in our dataset, we calculated class weights for the p
 - Macro F1-score: 0.64 @ threshold 0.94
 
 
-#### 4. Stacked BiGRU Model with Pretrained BERT Embeddings:
+#### 5. Stacked BiGRU Model with Pretrained BERT Embeddings:
 
 ##### Architecture:
 - Pretrained BERT Embeddings ("bert-base-uncased") freezed.
@@ -153,13 +155,14 @@ To address class imbalance in our dataset, we calculated class weights for the p
 - Macro PR-AUC: 0.69
 - Macro F1-score: 0.67 @ threshold 0.92
 
-#### 5. Stacked BiGRU + Dot-Product Attention with Pretrained BERT Embeddings (automatically fine-tuned using optuna)
+#### 6. Stacked BiGRU + Dot-Product Attention with Pretrained BERT Embeddings (automatically fine-tuned using optuna)
 
 ##### Architecture:
 - Pretrained BERT Embeddings ("bert-base-uncased") freezed.
-- 2 layer of BiGRU with a hidden dimension of 32 and dropout of 0.4
+- hidden_dim: 128, dropout: 0.5, num_layers: 3
+- Dot-Product attention
 - Output layer
 
 ##### Results on the test set:
 - Macro PR-AUC: 0.69
-- Macro F1-score: 0.67 @ threshold 0.92
+- Macro F1-score: 0.7 @ threshold 0.84
