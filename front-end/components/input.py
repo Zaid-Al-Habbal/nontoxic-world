@@ -1,55 +1,117 @@
 """
 components/input.py
 Text input area + model selector.
+Uses st.pills (Streamlit 1.40+) for example selection.
 """
 
 import streamlit as st
 from services.api_client import DEMO_MODELS
-from utils.helpers import fmt_model_name, MODEL_DESCRIPTIONS
+from utils.helpers import (
+    fmt_model_name,
+    MODEL_DESCRIPTIONS,
+    MODEL_TOKENIZER_LABEL,
+    MODEL_SPEED_LABEL,
+)
 
 MAX_CHARS = 10_000
-EXAMPLE_TEXTS = [
-    "Thank you for your contribution!",
-    "You are an absolute idiot.",
-    "This edit is completely wrong.",
-    "I strongly disagree with you.",
-    "Get out you worthless garbage.",
-]
+
+# Label → example text
+EXAMPLES = {
+    "Safe ✅":        "Thank you for your contribution to this article!",
+    "Insult ⚠️":      "You are an absolute idiot and I hope you disappear.",
+    "Criticism 🔍":   "This edit is completely wrong and misleading.",
+    "Disagreement 💬":"I strongly disagree with your point of view here.",
+    "Threat 🚨":      "Get out of here you worthless piece of garbage.",
+}
+
+# Icon per model for the info card
+MODEL_ICONS = {
+    "StackedBiGRUModel":                   "⚡",
+    "StackedBiGRUWithPretrainedEmbedModel": "⚖️",
+    "StackedBiGRUWithScaledAttention":     "🎯",
+}
+
+
+def _model_info_card(model: dict) -> None:
+    """Render a rich info card for the currently selected model."""
+    api_name = model["model_name"]
+    icon     = MODEL_ICONS.get(api_name, "🤖")
+    tok      = MODEL_TOKENIZER_LABEL.get(api_name, "")
+    speed    = MODEL_SPEED_LABEL.get(api_name, "")
+    desc     = MODEL_DESCRIPTIONS.get(api_name, "")
+    pr_auc   = model["pr_auc"]
+    f1       = model["macro_f1"]
+
+    st.markdown(
+        f"""
+        <div class="model-info-card">
+            <div class="model-info-header">
+                <span class="model-info-icon">{icon}</span>
+                <div class="model-info-tags">
+                    <span class="model-tag">{tok}</span>
+                    <span class="model-tag model-tag-speed">{speed}</span>
+                </div>
+            </div>
+            <p class="model-info-desc">{desc}</p>
+            <div class="model-info-scores">
+                <div class="model-score-item">
+                    <span class="model-score-label">PR-AUC</span>
+                    <div class="model-score-bar">
+                        <div class="model-score-fill" style="width:{pr_auc*100:.1f}%"></div>
+                    </div>
+                    <span class="model-score-val">{pr_auc:.2f}</span>
+                </div>
+                <div class="model-score-item">
+                    <span class="model-score-label">Macro F1</span>
+                    <div class="model-score-bar">
+                        <div class="model-score-fill" style="width:{f1*100:.1f}%"></div>
+                    </div>
+                    <span class="model-score-val">{f1:.2f}</span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_input_section():
-    """Renders the text input area + model selector. Returns (text, model_name, submitted)."""
-    models_data = st.session_state.get("models_data") or DEMO_MODELS
-    model_names = [m["model_name"] for m in models_data]
+    """Renders text input + model selector. Returns (text, model_name, submitted)."""
+    models_data  = st.session_state.get("models_data") or DEMO_MODELS
+    model_names  = [m["model_name"] for m in models_data]
     selected_idx = st.session_state.get("selected_model_idx", 2)
-    if selected_idx >= len(models_data):
-        selected_idx = len(models_data) - 1
+    # Guard against stale index if model list changes
+    selected_idx = min(selected_idx, len(models_data) - 1)
     st.session_state["selected_model_idx"] = selected_idx
 
     col_input, col_config = st.columns([3, 1], gap="large")
 
-    # ── Left: text area ───────────────────────────────────────────────────────
+    # ── Left: text input ──────────────────────────────────────────────────────
     with col_input:
-        st.markdown(
-            '<p class="section-label">Comment to Analyze</p>', unsafe_allow_html=True
+        st.markdown('<p class="section-label">Comment to Analyze</p>', unsafe_allow_html=True)
+
+        # Quick example pills (Streamlit 1.40+)
+        st.markdown('<p class="example-label">Quick examples</p>', unsafe_allow_html=True)
+        pill = st.pills(
+            label="Examples",
+            options=list(EXAMPLES.keys()),
+            selection_mode="single",
+            label_visibility="collapsed",
+            key="example_pills",
         )
 
-        st.markdown(
-            '<p class="example-label">Quick examples</p>', unsafe_allow_html=True
-        )
-        eg_cols = st.columns(len(EXAMPLE_TEXTS))
-        for i, (col, ex) in enumerate(zip(eg_cols, EXAMPLE_TEXTS)):
-            with col:
-                if st.button(
-                    f"#{i + 1}", key=f"ex_{i}", use_container_width=True, help=ex
-                ):
-                    st.session_state["main_text_area"] = ex
-                    st.session_state["input_text_val"] = ex
+        # When a pill is selected, inject its text into the textarea widget state
+        # (must happen before st.text_area renders)
+        if pill:
+            example_text = EXAMPLES[pill]
+            if st.session_state.get("input_text_val") != example_text:
+                st.session_state["input_text_val"] = example_text
+                st.session_state["main_text_area"] = example_text
 
         default_text = st.session_state.get("input_text_val", "")
 
         text = st.text_area(
-            "Enter text",
+            label="Comment",
             value=default_text,
             height=170,
             max_chars=MAX_CHARS,
@@ -57,10 +119,13 @@ def render_input_section():
             label_visibility="collapsed",
             key="main_text_area",
         )
-        st.session_state["input_text_val"] = text
+
+        # Keep session state in sync with what the user types
+        if text != st.session_state.get("input_text_val", ""):
+            st.session_state["input_text_val"] = text
 
         char_count = len(text)
-        warn_cls = "warn" if char_count > MAX_CHARS * 0.9 else ""
+        warn_cls   = "warn" if char_count > MAX_CHARS * 0.9 else ""
         st.markdown(
             f'<p class="char-counter {warn_cls}">{char_count:,} / {MAX_CHARS:,}</p>',
             unsafe_allow_html=True,
@@ -71,6 +136,7 @@ def render_input_section():
             type="primary",
             use_container_width=True,
             disabled=not text.strip(),
+            key="analyze_btn",
         )
         if submitted and not text.strip():
             st.warning("Please enter some text before analyzing.")
@@ -80,27 +146,20 @@ def render_input_section():
     with col_config:
         st.markdown('<p class="section-label">Model</p>', unsafe_allow_html=True)
 
-        model_options = [fmt_model_name(m["model_name"]) for m in models_data]
-        selected_option = st.selectbox(
-            "Select Model",
-            options=model_options,
+        display_names    = [fmt_model_name(m["model_name"]) for m in models_data]
+        selected_display = st.selectbox(
+            label="Select model",
+            options=display_names,
             index=selected_idx,
             label_visibility="collapsed",
-            key="model_select",
+            key="model_selectbox",
         )
-        selected_idx = model_options.index(selected_option)
-        st.session_state["selected_model_idx"] = selected_idx
+        new_idx = display_names.index(selected_display)
+        if new_idx != selected_idx:
+            st.session_state["selected_model_idx"] = new_idx
+            selected_idx = new_idx
 
-        # Description of selected model
-        desc = MODEL_DESCRIPTIONS.get(model_names[selected_idx], "")
-        st.markdown(
-            f"""
-            <div class="msc-desc-panel">
-                <p class="msc-desc-eyebrow">About this model</p>
-                <p class="msc-desc-text">{desc}</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        # Rich info card for the currently selected model
+        _model_info_card(models_data[selected_idx])
 
     return text, model_names[selected_idx], submitted

@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 from components.input import render_input_section
 from components.prediction import render_prediction_results
@@ -6,12 +7,12 @@ from services.api_client import get_available_models
 from utils.helpers import load_css, init_session_state
 
 # ── Backend URL (hardcoded — no user-facing config) ───────────────────────────
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = os.getenv("API_URL", "http://localhost:8000")
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Nontoxic World",
-    page_icon="🌿",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -57,7 +58,7 @@ with st.sidebar:
 
     # Connection pill (read-only, no config exposed)
     is_connected = st.session_state.get("models_data") is not None
-    dot_cls   = "dot-live" if is_connected else "dot-demo"
+    dot_cls = "dot-live" if is_connected else "dot-demo"
     label_txt = "Live · Backend connected" if is_connected else "Demo mode · No backend"
     st.markdown(
         f"""
@@ -96,9 +97,15 @@ st.markdown(
 
 # ── Page header ───────────────────────────────────────────────────────────────
 page_meta = {
-    "Analyze Text":   ("Analyze", "Detect toxicity across six dimensions in any comment."),
-    "Compare Models": ("Compare", "Run all three models side-by-side on the same input."),
-    "History":        ("History", "Browse and export your session prediction log."),
+    "Analyze Text": (
+        "Analyze",
+        "Detect toxicity across six dimensions in any comment.",
+    ),
+    "Compare Models": (
+        "Compare",
+        "Run all three models side-by-side on the same input.",
+    ),
+    "History": ("History", "Browse and export your session prediction log."),
 }
 h_word, h_sub = page_meta.get(page, ("Nontoxic World", ""))
 
