@@ -88,7 +88,7 @@ RUN chown -R appuser:appgroup /app/.cache
 
 USER appuser
 
-EXPOSE 8000
+EXPOSE 7860
 
 # 60s start-period: the app downloads model checkpoints from HuggingFace on boot
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
@@ -96,4 +96,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 # Single worker is intentional: multiple workers would load duplicate model
 # copies into memory and compete for the GPU
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]
