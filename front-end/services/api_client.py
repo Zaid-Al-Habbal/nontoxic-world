@@ -32,7 +32,7 @@ DEMO_MODELS = [
         "model_name": "StackedBiGRUWithScaledAttention",
         "tokenizer_type": "bert",
         "pr_auc": 0.69,
-        "macro_f1": 0.67,
+        "macro_f1": 0.7,
         "thresholds": {
             "toxic": 0.25, "severe_toxic": 0.10, "obscene": 0.22,
             "threat": 0.08, "insult": 0.21, "identity_hate": 0.09,

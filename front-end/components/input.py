@@ -2,9 +2,10 @@
 components/input.py
 Text input area + model selector.
 """
+
 import streamlit as st
 from services.api_client import DEMO_MODELS
-from utils.helpers import fmt_model_name, MODEL_DESCRIPTIONS, MODEL_TOKENIZER_LABEL, MODEL_SPEED_LABEL
+from utils.helpers import fmt_model_name, MODEL_DESCRIPTIONS
 
 MAX_CHARS = 10_000
 EXAMPLE_TEXTS = [
@@ -16,38 +17,36 @@ EXAMPLE_TEXTS = [
 ]
 
 
-def _score_bar(value: float) -> str:
-    pct = value * 100
-    return (
-        f'<div class="score-bar-track">'
-        f'<div class="score-bar-fill" style="width:{pct:.1f}%"></div>'
-        f'</div>'
-    )
-
-
 def render_input_section():
     """Renders the text input area + model selector. Returns (text, model_name, submitted)."""
-    models_data  = st.session_state.get("models_data") or DEMO_MODELS
-    model_names  = [m["model_name"] for m in models_data]
+    models_data = st.session_state.get("models_data") or DEMO_MODELS
+    model_names = [m["model_name"] for m in models_data]
     selected_idx = st.session_state.get("selected_model_idx", 2)
+    if selected_idx >= len(models_data):
+        selected_idx = len(models_data) - 1
+    st.session_state["selected_model_idx"] = selected_idx
 
     col_input, col_config = st.columns([3, 1], gap="large")
 
     # ── Left: text area ───────────────────────────────────────────────────────
     with col_input:
-        st.markdown('<p class="section-label">Comment to Analyze</p>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="section-label">Comment to Analyze</p>', unsafe_allow_html=True
+        )
 
-        st.markdown('<p class="example-label">Quick examples</p>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="example-label">Quick examples</p>', unsafe_allow_html=True
+        )
         eg_cols = st.columns(len(EXAMPLE_TEXTS))
-        selected_example = None
         for i, (col, ex) in enumerate(zip(eg_cols, EXAMPLE_TEXTS)):
             with col:
-                if st.button(f"#{i+1}", key=f"ex_{i}", use_container_width=True, help=ex):
-                    selected_example = ex
+                if st.button(
+                    f"#{i + 1}", key=f"ex_{i}", use_container_width=True, help=ex
+                ):
+                    st.session_state["main_text_area"] = ex
+                    st.session_state["input_text_val"] = ex
 
-        default_text = selected_example if selected_example else st.session_state.get("input_text_val", "")
-        if selected_example:
-            st.session_state["input_text_val"] = selected_example
+        default_text = st.session_state.get("input_text_val", "")
 
         text = st.text_area(
             "Enter text",
@@ -81,87 +80,16 @@ def render_input_section():
     with col_config:
         st.markdown('<p class="section-label">Model</p>', unsafe_allow_html=True)
 
-        # Render all cards as one HTML block
-        cards_html = '<div class="model-selector">'
-        for i, model in enumerate(models_data):
-            api_name    = model["model_name"]
-            is_selected = i == selected_idx
-            active_cls  = "msc-active" if is_selected else ""
-            check       = '<span class="msc-check">&#10003;</span>' if is_selected else '<span class="msc-check msc-check-empty"></span>'
-            badge       = '<span class="msc-badge">Best</span>' if i == 2 else ""
-            tok         = MODEL_TOKENIZER_LABEL.get(api_name, "")
-            speed       = MODEL_SPEED_LABEL.get(api_name, "")
-            pr_bar      = _score_bar(model["pr_auc"])
-            f1_bar      = _score_bar(model["macro_f1"])
-
-            cards_html += f"""
-<div class="msc-card {active_cls}" data-idx="{i}">
-  <div class="msc-header">
-    {check}
-    <span class="msc-name">{fmt_model_name(api_name)}</span>
-    {badge}
-  </div>
-  <div class="msc-tags">
-    <span class="msc-tag">{tok}</span>
-    <span class="msc-tag msc-tag-speed">{speed}</span>
-  </div>
-  <div class="msc-scores">
-    <div class="msc-score-row">
-      <span class="msc-score-label">PR-AUC</span>
-      {pr_bar}
-      <span class="msc-score-val">{model["pr_auc"]:.2f}</span>
-    </div>
-    <div class="msc-score-row">
-      <span class="msc-score-label">F1</span>
-      {f1_bar}
-      <span class="msc-score-val">{model["macro_f1"]:.2f}</span>
-    </div>
-  </div>
-</div>"""
-        cards_html += '\n</div>'
-        st.markdown(cards_html, unsafe_allow_html=True)
-
-        # Hidden trigger buttons — one per model.
-        # We hide them via CSS (class "msc-trigger-btn") rather than label_visibility.
-        st.markdown('<div class="msc-trigger-wrap">', unsafe_allow_html=True)
-        for i in range(len(models_data)):
-            if st.button(f"sel{i}", key=f"sel_model_{i}"):
-                st.session_state["selected_model_idx"] = i
-                st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # JS: map card clicks → matching hidden Streamlit button
-        # We match on the button text "sel0", "sel1", "sel2"
-        st.markdown(
-            """
-            <script>
-            (function() {
-                function attach() {
-                    document.querySelectorAll('.msc-card').forEach(function(card) {
-                        card.addEventListener('click', function() {
-                            var idx = card.getAttribute('data-idx');
-                            var target = 'sel' + idx;
-                            var allBtns = window.parent.document.querySelectorAll('button');
-                            allBtns.forEach(function(btn) {
-                                if (btn.innerText.trim() === target) {
-                                    btn.click();
-                                }
-                            });
-                        });
-                    });
-                }
-                var tries = 0;
-                var iv = setInterval(function() {
-                    if (document.querySelectorAll('.msc-card').length > 0 || tries++ > 30) {
-                        clearInterval(iv);
-                        attach();
-                    }
-                }, 100);
-            })();
-            </script>
-            """,
-            unsafe_allow_html=True,
+        model_options = [fmt_model_name(m["model_name"]) for m in models_data]
+        selected_option = st.selectbox(
+            "Select Model",
+            options=model_options,
+            index=selected_idx,
+            label_visibility="collapsed",
+            key="model_select",
         )
+        selected_idx = model_options.index(selected_option)
+        st.session_state["selected_model_idx"] = selected_idx
 
         # Description of selected model
         desc = MODEL_DESCRIPTIONS.get(model_names[selected_idx], "")

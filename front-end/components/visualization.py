@@ -2,15 +2,17 @@
 components/visualization.py
 Model comparison mode and prediction history page.
 """
+
 import streamlit as st
 import json
 from services.api_client import predict, DEMO_MODELS
-from utils.helpers import add_to_history, fmt_label, fmt_model_name, pct, toxic_count
+from utils.helpers import fmt_label, fmt_model_name, pct, toxic_count
 
 LABEL_ORDER = ["toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate"]
 
 
 # ── Comparison mode ───────────────────────────────────────────────────────────
+
 
 def render_comparison_mode(backend_url: str):
     st.markdown('<p class="section-label">Input</p>', unsafe_allow_html=True)
@@ -58,7 +60,7 @@ def render_comparison_mode(backend_url: str):
     with st.spinner("Running all models…"):
         for model in models_data:
             name = model["model_name"]
-            res  = predict(backend_url, text, name)
+            res = predict(backend_url, text, name)
             if res:
                 results[name] = res
 
@@ -73,10 +75,10 @@ def render_comparison_mode(backend_url: str):
     cols = st.columns(len(results))
     for col, (name, res) in zip(cols, results.items()):
         with col:
-            is_toxic   = res.get("is_toxic", False)
-            n_toxic    = toxic_count(res.get("predictions", {}))
+            is_toxic = res.get("is_toxic", False)
+            n_toxic = toxic_count(res.get("predictions", {}))
             banner_cls = "toxic" if is_toxic else "safe"
-            icon       = "⚠️" if is_toxic else "✅"
+            icon = "⚠️" if is_toxic else "✅"
             st.markdown(
                 f"""
                 <div class="result-banner {banner_cls}" style="flex-direction:column;align-items:flex-start;padding:1.2rem 1.4rem;">
@@ -91,7 +93,9 @@ def render_comparison_mode(backend_url: str):
             )
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown('<p class="section-label">Per-Label Comparison</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="section-label">Per-Label Comparison</p>', unsafe_allow_html=True
+    )
 
     for label in LABEL_ORDER:
         st.markdown(
@@ -101,9 +105,9 @@ def render_comparison_mode(backend_url: str):
         )
         cols = st.columns(len(results))
         for col, (name, res) in zip(cols, results.items()):
-            prob     = res.get("probabilities", {}).get(label, 0.0)
+            prob = res.get("probabilities", {}).get(label, 0.0)
             is_toxic = res.get("predictions", {}).get(label, False)
-            bar_cls  = "toxic" if is_toxic else "safe"
+            bar_cls = "toxic" if is_toxic else "safe"
             with col:
                 st.markdown(
                     f"""
@@ -111,17 +115,21 @@ def render_comparison_mode(backend_url: str):
                         <p class="compare-model-label" style="font-family:var(--font-mono);font-size:0.6rem;
                            color:var(--text-600);margin:0 0 4px;">{fmt_model_name(name)}</p>
                         <div class="bar-track" style="margin-bottom:4px;">
-                            <div class="bar-fill {bar_cls}" style="width:{prob*100:.1f}%;"></div>
+                            <div class="bar-fill {bar_cls}" style="width:{prob * 100:.1f}%;"></div>
                         </div>
                         <span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--text-200);">{pct(prob)}</span>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
-        st.markdown('<div style="height:6px;border-bottom:1px solid var(--glass-border);margin-bottom:14px;"></div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div style="height:6px;border-bottom:1px solid var(--glass-border);margin-bottom:14px;"></div>',
+            unsafe_allow_html=True,
+        )
 
 
 # ── History page ──────────────────────────────────────────────────────────────
+
 
 def render_history():
     st.markdown('<p class="section-label">Session Log</p>', unsafe_allow_html=True)
@@ -146,7 +154,7 @@ def render_history():
     with col_info:
         st.markdown(
             f'<p style="font-family:var(--font-mono);font-size:0.68rem;color:var(--text-600);">'
-            f'{len(history)} prediction{"s" if len(history) != 1 else ""} this session</p>',
+            f"{len(history)} prediction{'s' if len(history) != 1 else ''} this session</p>",
             unsafe_allow_html=True,
         )
     with col_btn:
@@ -155,8 +163,15 @@ def render_history():
             st.rerun()
 
     export_data = [
-        {"timestamp": h["timestamp"], "date": h["date"], "text": h["text"],
-         "model": h["model"], "is_toxic": h["is_toxic"], "probabilities": h["probabilities"]}
+        {
+            "timestamp": h["timestamp"],
+            "date": h["date"],
+            "text": h["text"],
+            "model": h["model"],
+            "is_toxic": h["is_toxic"],
+            "probabilities": h["probabilities"],
+            "predictions": h["predictions"],
+        }
         for h in history
     ]
     st.download_button(
@@ -170,9 +185,9 @@ def render_history():
 
     for entry in history:
         is_toxic = entry["is_toxic"]
-        n_toxic  = toxic_count(entry.get("predictions", {}))
-        icon     = "⚠️" if is_toxic else "✅"
-        label    = entry["text"][:80] + ("…" if len(entry["text"]) > 80 else "")
+        n_toxic = toxic_count(entry.get("predictions", {}))
+        icon = "⚠️" if is_toxic else "✅"
+        label = entry["text"][:80] + ("…" if len(entry["text"]) > 80 else "")
 
         with st.expander(f"{icon}  {label}"):
             c1, c2, c3 = st.columns(3)
@@ -189,15 +204,15 @@ def render_history():
             probs = entry.get("probabilities", {})
             preds = entry.get("predictions", {})
             for label_key in LABEL_ORDER:
-                prob    = probs.get(label_key, 0.0)
-                is_lbl  = preds.get(label_key, False)
+                prob = probs.get(label_key, 0.0)
+                is_lbl = preds.get(label_key, False)
                 bar_cls = "toxic" if is_lbl else "safe"
                 st.markdown(
                     f"""
                     <div class="label-row">
                         <span class="label-name">{fmt_label(label_key)}</span>
                         <div class="bar-track">
-                            <div class="bar-fill {bar_cls}" style="width:{prob*100:.1f}%;"></div>
+                            <div class="bar-fill {bar_cls}" style="width:{prob * 100:.1f}%;"></div>
                         </div>
                         <span class="bar-pct">{pct(prob)}</span>
                     </div>

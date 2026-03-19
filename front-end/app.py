@@ -47,7 +47,7 @@ with st.sidebar:
     # Nav
     st.markdown('<p class="nav-eyebrow">Navigate</p>', unsafe_allow_html=True)
     page = st.radio(
-        "",
+        "Navigation",
         options=["Analyze Text", "Compare Models", "History"],
         label_visibility="collapsed",
         key="nav_page",
