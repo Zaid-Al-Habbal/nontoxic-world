@@ -5,7 +5,7 @@ from typing import Literal
 
 import torch
 import torch.nn as nn
-import transformers
+
 from huggingface_hub import hf_hub_download
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 import tokenizers
@@ -67,6 +67,7 @@ _REGISTRY: dict[str, dict] = {
 # Internal dataclass for a fully loaded model entry
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class _LoadedModel:
     model: nn.Module
@@ -90,6 +91,7 @@ _bert_embeddings: nn.Embedding | None = None
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
@@ -101,9 +103,7 @@ def _get_device() -> torch.device:
 def _load_bert_embeddings() -> nn.Embedding:
     hf_repo = "Zaid-Al-Habbal/nontoxic-world"
     logger.info(f"Downloading checkpoint for bert_word_embeddings from {hf_repo}...")
-    checkpoint = hf_hub_download(
-        repo_id=hf_repo, filename="bert_word_embeddings.pt"
-    )
+    checkpoint = hf_hub_download(repo_id=hf_repo, filename="bert_word_embeddings.pt")
     embeddings = torch.load(checkpoint, weights_only=False)
     return embeddings
 
@@ -164,9 +164,7 @@ def _load_single_model(model_name: str) -> _LoadedModel:
     checkpoint_path = hf_hub_download(
         repo_id=hf_repo, filename=entry["checkpoint_file"]
     )
-    threshold_path = hf_hub_download(
-        repo_id=hf_repo, filename=entry["threshold_file"]
-    )
+    threshold_path = hf_hub_download(repo_id=hf_repo, filename=entry["threshold_file"])
 
     checkpoint = torch.load(checkpoint_path, map_location=_device, weights_only=False)
 
@@ -176,7 +174,18 @@ def _load_single_model(model_name: str) -> _LoadedModel:
     # Validate threshold keys match expected labels
     missing = set(LABELS) - set(thresholds.keys())
     if missing:
-        raise ValueError(f"Threshold file for {model_name} is missing labels: {missing}")
+        raise ValueError(
+            f"Threshold file for {model_name} is missing labels: {missing}"
+        )
+
+    # Fix for missing 'scale' buffer in older checkpoints
+    if "scale" not in checkpoint["model_state_dict"]:
+        cfg = checkpoint.get("config", {})
+        hidden_dim = cfg.get("hidden_dim", 32)
+        gru_output_dim = 2 * hidden_dim
+        checkpoint["model_state_dict"]["scale"] = torch.sqrt(
+            torch.tensor(gru_output_dim, dtype=torch.float32)
+        )
 
     # Tokenizer
     if family == "bbpe":
@@ -197,7 +206,7 @@ def _load_single_model(model_name: str) -> _LoadedModel:
         checkpoint,
         bert_embeddings=_bert_embeddings if family == "bert" else None,
     )
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model.load_state_dict(checkpoint["model_state_dict"], strict=False)
     model.to(_device)
     model.eval()
 
@@ -213,6 +222,7 @@ def _load_single_model(model_name: str) -> _LoadedModel:
 # ---------------------------------------------------------------------------
 # Public lifecycle functions (called from main.py lifespan)
 # ---------------------------------------------------------------------------
+
 
 def load_all_models() -> None:
     """Load every registered model into memory. Called once at app startup."""
@@ -235,6 +245,7 @@ def get_loaded_model_names() -> list[str]:
 # Inference
 # ---------------------------------------------------------------------------
 
+
 def _tokenize(
     text: str,
     tokenizer: PreTrainedTokenizerFast,
@@ -253,8 +264,7 @@ def _tokenize(
 def predict(model_name: str, text: str) -> PredictResponse:
     if model_name not in _loaded:
         raise KeyError(
-            f"Model '{model_name}' is not loaded. "
-            f"Available: {list(_loaded.keys())}"
+            f"Model '{model_name}' is not loaded. Available: {list(_loaded.keys())}"
         )
 
     entry = _loaded[model_name]
@@ -263,15 +273,14 @@ def predict(model_name: str, text: str) -> PredictResponse:
     encoding = _tokenize(preprocessed, entry.tokenizer)
 
     with torch.no_grad():
-        logits = entry.model(encoding)          # (1, 6)
+        logits = entry.model(encoding)  # (1, 6)
         probs = torch.sigmoid(logits).squeeze(0)  # (6,)
 
     probs_list = probs.cpu().tolist()
 
     prob_dict = dict(zip(LABELS, probs_list))
     pred_dict = {
-        label: prob >= entry.thresholds[label]
-        for label, prob in prob_dict.items()
+        label: prob >= entry.thresholds[label] for label, prob in prob_dict.items()
     }
 
     return PredictResponse(
