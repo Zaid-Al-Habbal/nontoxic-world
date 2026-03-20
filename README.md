@@ -69,6 +69,9 @@ This is a **multi-label classification problem** where comments can exhibit mult
 | BiGRU + BERT | Pretrained embeddings | 0.69 | 0.67 | Transfer learning |
 | BiGRU + Attention | Scaled dot-product attention | 0.69 | 0.70 | **Best model** |
 
+![alt text](experiments/images/PR-curves.png)
+![alt text](experiments/images/macro-pr-curve.png)
+
 **Final Architecture (StackedBiGRUWithScaledAttention):**
 ```
 BERT Embeddings (frozen, 768-dim) 
