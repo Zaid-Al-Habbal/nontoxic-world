@@ -2,6 +2,11 @@
 components/input.py
 Text input area + model selector.
 Uses st.pills (Streamlit 1.40+) for example selection.
+
+Fix: Streamlit raises a warning when a widget has both key= and value= set,
+AND the session state key is also written to directly. The rule is:
+  - If you give st.text_area a key, control its value ONLY through
+    st.session_state[key] — never also pass value= at the same time.
 """
 
 import streamlit as st
@@ -17,11 +22,11 @@ MAX_CHARS = 10_000
 
 # Label → example text
 EXAMPLES = {
-    "Safe ✅":        "Thank you for your contribution to this article!",
-    "Insult ⚠️":      "You are an absolute idiot and I hope you disappear.",
-    "Criticism 🔍":   "This edit is completely wrong and misleading.",
-    "Disagreement 💬":"I strongly disagree with your point of view here.",
-    "Threat 🚨":      "Get out of here you worthless piece of garbage.",
+    "Safe ✅":         "Thank you for your contribution to this article!",
+    "Insult ⚠️":       "You are an absolute idiot and I hope you disappear.",
+    "Criticism 🔍":    "This edit is completely wrong and misleading.",
+    "Disagreement 💬": "I strongly disagree with your point of view here.",
+    "Threat 🚨":       "Get out of here you worthless piece of garbage.",
 }
 
 # Icon per model for the info card
@@ -80,9 +85,14 @@ def render_input_section():
     models_data  = st.session_state.get("models_data") or DEMO_MODELS
     model_names  = [m["model_name"] for m in models_data]
     selected_idx = st.session_state.get("selected_model_idx", 2)
-    # Guard against stale index if model list changes
     selected_idx = min(selected_idx, len(models_data) - 1)
     st.session_state["selected_model_idx"] = selected_idx
+
+    # ── Initialise the textarea's session-state key on first load only ────────
+    # We do this ONCE before the widget is rendered. After that, Streamlit owns
+    # the value through the key — we never pass value= to st.text_area.
+    if "main_text_area" not in st.session_state:
+        st.session_state["main_text_area"] = ""
 
     col_input, col_config = st.columns([3, 1], gap="large")
 
@@ -100,29 +110,22 @@ def render_input_section():
             key="example_pills",
         )
 
-        # When a pill is selected, inject its text into the textarea widget state
-        # (must happen before st.text_area renders)
-        if pill:
-            example_text = EXAMPLES[pill]
-            if st.session_state.get("input_text_val") != example_text:
-                st.session_state["input_text_val"] = example_text
-                st.session_state["main_text_area"] = example_text
+        # When a pill is selected, write the example text into the textarea's
+        # session-state key BEFORE st.text_area renders on this same run.
+        # Because we only set st.session_state[key] and never pass value=,
+        # there is no conflict and Streamlit raises no warning.
+        if pill and EXAMPLES[pill] != st.session_state["main_text_area"]:
+            st.session_state["main_text_area"] = EXAMPLES[pill]
 
-        default_text = st.session_state.get("input_text_val", "")
-
+        # No value= argument — Streamlit reads st.session_state["main_text_area"]
         text = st.text_area(
             label="Comment",
-            value=default_text,
             height=170,
             max_chars=MAX_CHARS,
             placeholder="Paste or type a comment here...",
             label_visibility="collapsed",
             key="main_text_area",
         )
-
-        # Keep session state in sync with what the user types
-        if text != st.session_state.get("input_text_val", ""):
-            st.session_state["input_text_val"] = text
 
         char_count = len(text)
         warn_cls   = "warn" if char_count > MAX_CHARS * 0.9 else ""
